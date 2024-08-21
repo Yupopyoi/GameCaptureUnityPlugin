@@ -12,5 +12,5 @@ Unity 2022.3.42f1
 
 # Verified OS
 
-Windows 11
+Windows 11  
 Ubuntu 22.04 (I will verify in the future)
