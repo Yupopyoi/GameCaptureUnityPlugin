@@ -1,109 +1,161 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-[RequireComponent(typeof(RawImage))]
-public class VideoDisplayer : MonoBehaviour
+namespace ResizableCapturedSource
 {
-    private WebCamTexture _webCamTexture;
-    private WebCamDevice[] _devices;
-    private RawImageÅ@_rawImage;
-
-    [Tooltip("Specify the camera device index to use by default. Set to 0 unless you have no reason.")]
-    [SerializeField] int _defaultDeviceIndex = 0;
-
-    void Start()
+    [RequireComponent(typeof(RawImage))]
+    [RequireComponent(typeof(AudioSource))]
+    [RequireComponent(typeof(Resize))]
+    public class VideoDisplayer : MonoBehaviour
     {
-        _rawImage = GetComponent<RawImage>();
-        LoadDevices();
-        PlayUsingSelectedDevice(_defaultDeviceIndex);
-    }
+        private WebCamTexture _webCamTexture;
+        private WebCamDevice[] _videoDevices;
 
-    #region Properties
+        private RawImage _rawImage;
+        private bool _isFlipped = false;
 
-    public string[] DeviceNames
-    {
-        get
+        private AudioSource _audioSource;
+        string _microphoneDevice;
+
+        private Resize _resize;
+
+        [Header("Initial state configurations")]
+        [Tooltip("Specify the camera device index to use by default. Set to 0 if you have no reason.")]
+        [SerializeField, Range(0, 10)] int _defaultVideoDeviceIndex = 0;
+        [Tooltip("Specify the audio device index to use by default. Set to 0 if you have no reason.")]
+        [SerializeField, Range(0, 10)] int _defaultAudioDeviceIndex = 0;
+        [Tooltip("Display the image with the left and right sides flipped from the start.")]
+        [SerializeField] bool _isFlippedByDefault = false;
+
+        void Start()
         {
-            string[] devicesNames = new string[_devices.Length];
-            for (int i = 0; i < _devices.Length; i++)
+            _rawImage = GetComponent<RawImage>();
+            _audioSource = GetComponent<AudioSource>();
+            _resize = GetComponent<Resize>();
+
+            _isFlipped = _isFlippedByDefault;
+            Vector3 scale = _rawImage.rectTransform.localScale;
+            scale.x = _isFlipped ? -1 : 1;
+            _rawImage.rectTransform.localScale = scale;
+
+            LoadDevices();
+            PlayUsingSelectedDevice(_defaultVideoDeviceIndex);
+            PlayMicrophone(_defaultAudioDeviceIndex);
+        }
+
+        #region Properties
+
+        public string[] VideoDeviceNames
+        {
+            get
             {
-                devicesNames[i] = _devices[i].name;
+                string[] devicesNames = new string[_videoDevices.Length];
+                for (int i = 0; i < _videoDevices.Length; i++)
+                {
+                    devicesNames[i] = _videoDevices[i].name;
+                }
+                return (string[])devicesNames.Clone();
             }
-            return (string[])devicesNames.Clone();
         }
-    }
 
-    public int[] CameraResolution()
-    {
-        int[] resolution = new int[2];
-        if (_webCamTexture != null)
+        public string[] AudioDeviceNames
         {
-            resolution[0] = _webCamTexture.width;
-            resolution[1] = _webCamTexture.height;
+            get
+            {
+                string[] devicesNames = new string[Microphone.devices.Length];
+                for (int i = 0; i < Microphone.devices.Length; i++)
+                {
+                    devicesNames[i] = Microphone.devices[i];
+                }
+                return (string[])devicesNames.Clone();
+            }
         }
-        return resolution;
-    }
 
-    public int[] CameraAspectRatio()
-    {
-        int[] aspectRatio = new int[2];
-        if (_webCamTexture != null)
+        public int[] CameraResolution()
         {
-            aspectRatio[0] = _webCamTexture.width;
-            aspectRatio[1] = _webCamTexture.height;
+            int[] resolution = new int[2];
+            if (_webCamTexture != null)
+            {
+                resolution[0] = _webCamTexture.width;
+                resolution[1] = _webCamTexture.height;
+            }
+            return resolution;
         }
 
-        while (aspectRatio[0] % 2 == 0 && aspectRatio[1] % 2 == 0)
+        #endregion
+
+        public void LoadDevices()
         {
-            aspectRatio[0] /= 2;
-            aspectRatio[1] /= 2;
+            _videoDevices = WebCamTexture.devices;
         }
 
-        while (aspectRatio[0] % 3 == 0 && aspectRatio[1] % 3 == 0)
+        public void PlayUsingSelectedDevice(int deviceIndex)
         {
-            aspectRatio[0] /= 3;
-            aspectRatio[1] /= 3;
+            if (deviceIndex < 0) return;
+            if (WebCamTexture.devices.Length <= deviceIndex) return;
+
+            _webCamTexture = new WebCamTexture(_videoDevices[deviceIndex].name);
+            _rawImage.texture = _webCamTexture;
+
+            _webCamTexture.Play();
+
+            _resize.SetAspectRatio(CameraResolution());
         }
 
-        while (aspectRatio[0] % 5 == 0 && aspectRatio[1] % 5 == 0)
+
+        public void PlayMicrophone(int deviceIndex)
         {
-            aspectRatio[0] /= 5;
-            aspectRatio[1] /= 5;
+            if (deviceIndex < 0) return;
+            if (Microphone.devices.Length <= deviceIndex) return;
+
+            _microphoneDevice = Microphone.devices[deviceIndex];
+            _audioSource.clip = Microphone.Start(_microphoneDevice, true, 10, 44100);
+            _audioSource.loop = true;
+
+            while (!(Microphone.GetPosition(_microphoneDevice) > 0)) { }
+
+            Unmute();
+            _audioSource.Play();
         }
 
-        return aspectRatio;
-    }
-
-    #endregion
-
-    public void LoadDevices()
-    {
-        _devices = WebCamTexture.devices;
-    }
-
-    public void PlayUsingSelectedDevice(int deviceIndex)
-    {
-        if (WebCamTexture.devices.Length <= deviceIndex) return;
-
-        _webCamTexture = new WebCamTexture(_devices[deviceIndex].name);
-        _rawImage.texture = _webCamTexture;
-
-        _webCamTexture.Play();
-        CameraAspectRatio();
-    }
-
-    public void Stop()
-    {
-        if (_webCamTexture != null)
+        public void Mute()
         {
-            _webCamTexture.Stop();
+            _audioSource.mute = true;
+        }
+
+        public void Unmute()
+        {
+            _audioSource.mute = false;
+        }
+
+        public void Reverse()
+        {
+            if (_rawImage != null)
+            {
+                _isFlipped = !_isFlipped;
+
+                Vector3 scale = _rawImage.rectTransform.localScale;
+                scale.x = _isFlipped ? -1 : 1;
+                _rawImage.rectTransform.localScale = scale;
+            }
+        }
+
+        public void Stop()
+        {
+            if (_webCamTexture != null)
+            {
+                _webCamTexture.Stop();
+            }
+
+            if (Microphone.IsRecording(_microphoneDevice))
+            {
+                Microphone.End(_microphoneDevice);
+            }
+        }
+
+        void OnDestroy()
+        {
+            Stop();
         }
     }
-
-    void OnDestroy()
-    {
-        Stop();
-    }
-}
+}// namespace ResizableCapturedSource
