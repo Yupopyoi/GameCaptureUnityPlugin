@@ -490,6 +490,7 @@ GameObject:
   - component: {fileID: 1726322832}
   - component: {fileID: 1726322830}
   - component: {fileID: 1726322834}
+  - component: {fileID: 1726322836}
   - component: {fileID: 1726322831}
   - component: {fileID: 1726322833}
   - component: {fileID: 1726322835}
@@ -678,7 +679,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _mouseSensitivity: 0.85
-  _resizeMargin: 50
+  _resizeMargin: 150
+  _isOperable: 1
+  _canStickOutScreen: 0
+  _minWidth: 500
 --- !u!114 &1726322835
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -693,6 +697,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_AspectMode: 1
   m_AspectRatio: 1.7777778
+--- !u!114 &1726322836
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1726322828}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6164d9ec74c04a645a7c754c99760ea6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

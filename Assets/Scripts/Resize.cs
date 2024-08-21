@@ -1,4 +1,6 @@
 using System;
+using System.Runtime.InteropServices.WindowsRuntime;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,6 +8,7 @@ namespace ResizableCapturedSource
 {
     [RequireComponent(typeof(RawImage))]
     [RequireComponent(typeof(RectTransform))]
+    [RequireComponent(typeof(VideoDisplayer))]
     [RequireComponent(typeof(AspectRatioFitter))]
     public class Resize : MonoBehaviour
     {
@@ -18,25 +21,57 @@ namespace ResizableCapturedSource
         private Vector2 _mouthLocalPoint;
 
         private AspectRatioFitter _aspectRatioFitter;
+        private VideoDisplayer _videoDisplayer;
 
         private float _aspectRatio = 16.0f / 9.0f;
 
+        [Header("Configurations")]
         [Tooltip("Mouse sensitivity. Recommended value is 0.85")]
         [SerializeField, Range(0.5f, 1.2f)] float _mouseSensitivity = 0.85f;
-        [Tooltip("Specifies the range within which you can start resizing. Defined by distance from the edge.")]
-        [SerializeField, Range(1.0f, 100.0f)] float _resizeMargin = 50.0f;
 
-        void Start()
+        [Tooltip("Specifies the range within which you can start resizing. Defined by distance from the edge.")]
+        [SerializeField, Range(20.0f, 300.0f)] float _resizeMargin = 150.0f;
+
+        [Tooltip("You can choose to make RawImage operable. This choice also applies to movement.")]
+        [SerializeField] bool _isOperable = true;
+
+        [Tooltip("You can choose whether you want the RawImage to go out of the screen when you operate it. " +
+                 "This choice also applies to movement.")]
+        [SerializeField] bool _canStickOutScreen = false;
+
+        [Tooltip("The minimum width that can be set.")]
+        [SerializeField, Range(100.0f, 1000.0f)] float _minWidth = 200.0f;
+
+        #region Properties
+
+        public float ResizeArea() => _resizeMargin;
+        public bool IsOperable
+        {
+            get { return _isOperable; }
+            set { _isOperable = value; }
+        }
+        public bool CanStickOutScreen
+        {
+            get { return _canStickOutScreen; }
+            set { _canStickOutScreen = value; }
+        }
+
+        #endregion
+
+        void Awake()
         {
             _rawImage = GetComponent<RawImage>();
             _resizeHandle = _rawImage.GetComponent<RectTransform>();
             _aspectRatioFitter = GetComponent<AspectRatioFitter>();
+            _videoDisplayer = GetComponent<VideoDisplayer>();
 
             _aspectRatioFitter.aspectRatio = _aspectRatio;
         }
 
         void Update()
         {
+            if (!_isOperable) return;
+
             // Start Resizing
             if (Input.GetMouseButtonDown(0))
             {
@@ -60,6 +95,13 @@ namespace ResizableCapturedSource
             // Continue Resizing
             if (_isResizing && Input.GetMouseButton(0))
             {
+                if(_videoDisplayer.IsFlipped())
+                {
+                    Vector3 scale = _rawImage.rectTransform.localScale;
+                    scale.x *= -1;
+                    _rawImage.rectTransform.localScale = scale;
+                }
+
                 var screenPos = RectTransformUtility.WorldToScreenPoint(Camera.main, Input.mousePosition);
 
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(_resizeHandle, screenPos, Camera.main, out _mouthLocalPoint);
@@ -104,13 +146,27 @@ namespace ResizableCapturedSource
                 // Obtain the difference between the left and right mouse position.
                 var differenceMouthPosition = Math.Abs(_mouthLocalPoint.x) - Math.Abs(_previousMouthLocalPoint.x);
 
-                _resizeHandle.sizeDelta = new Vector2(
-                    rawImageWidth + differenceMouthPosition * 2 * _mouseSensitivity,
+                var newWidth = rawImageWidth + differenceMouthPosition * 2 * _mouseSensitivity;
+
+                if(newWidth > Screen.width)
+                {
+                    newWidth = Screen.width;
+                }
+                else if (newWidth < _minWidth)
+                {
+                    newWidth = _minWidth;
+                }
+
+                Vector2 sizeDelta = new Vector2(
+                    newWidth,
                     rawImageHeight
                 );
 
+                _resizeHandle.sizeDelta = sizeDelta;
+
                 var resizedWidth = _resizeHandle.rect.width;
                 var resizedHeight = _resizeHandle.rect.height;
+
                 var resized_x = fixedCorners.x;
                 var resized_y = fixedCorners.y;
 
@@ -136,6 +192,13 @@ namespace ResizableCapturedSource
                 _resizeHandle.localPosition = newCenterPos;
 
                 _previousMouthLocalPoint = _mouthLocalPoint;
+
+                if (_videoDisplayer.IsFlipped())
+                {
+                    Vector3 scale = _rawImage.rectTransform.localScale;
+                    scale.x *= -1;
+                    _rawImage.rectTransform.localScale = scale;
+                }
             }
         }
 
@@ -153,7 +216,6 @@ namespace ResizableCapturedSource
         {
             Rect rect = _resizeHandle.rect;
 
-            // 左右または上下のエッジに近い場合は true を返す
             return Mathf.Abs(localMousePosition.x - rect.xMin) <= _resizeMargin ||
                    Mathf.Abs(localMousePosition.x - rect.xMax) <= _resizeMargin ||
                    Mathf.Abs(localMousePosition.y - rect.yMin) <= _resizeMargin ||

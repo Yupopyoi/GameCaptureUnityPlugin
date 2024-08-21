@@ -27,6 +27,12 @@ namespace ResizableCapturedSource
         [Tooltip("Display the image with the left and right sides flipped from the start.")]
         [SerializeField] bool _isFlippedByDefault = false;
 
+        #region Properties
+
+        public bool IsFlipped() => _isFlipped;
+
+        #endregion
+
         void Start()
         {
             _rawImage = GetComponent<RawImage>();
