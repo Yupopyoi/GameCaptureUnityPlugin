@@ -492,8 +492,10 @@ GameObject:
   - component: {fileID: 1726322834}
   - component: {fileID: 1726322836}
   - component: {fileID: 1726322831}
-  - component: {fileID: 1726322833}
   - component: {fileID: 1726322835}
+  - component: {fileID: 1726322833}
+  - component: {fileID: 1726322838}
+  - component: {fileID: 1726322839}
   m_Layer: 5
   m_Name: ResizableCapturedImage
   m_TagString: Untagged
@@ -532,6 +534,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2f97fa09f32e92848bcc736cc12f1a75, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _subAudioSource: {fileID: 0}
   _defaultVideoDeviceIndex: 1
   _defaultAudioDeviceIndex: 0
   _isFlippedByDefault: 0
@@ -582,13 +585,13 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_PlayOnAwake: 1
-  m_Volume: 1
+  m_Volume: 0.5
   m_Pitch: 1
-  Loop: 1
+  Loop: 0
   Mute: 0
   Spatialize: 0
   SpatializePostEffects: 0
-  Priority: 128
+  Priority: 0
   DopplerLevel: 1
   MinDistance: 1
   MaxDistance: 500
@@ -656,7 +659,7 @@ AudioSource:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 1
+      value: 0
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -679,7 +682,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _mouseSensitivity: 0.85
-  _resizeMargin: 150
+  _resizeMargin: 100
   _isOperable: 1
   _canStickOutScreen: 0
   _minWidth: 500
@@ -709,6 +712,41 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6164d9ec74c04a645a7c754c99760ea6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!165 &1726322838
+AudioHighPassFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1726322828}
+  m_Enabled: 1
+  m_CutoffFrequency: 200
+  m_HighpassResonanceQ: 10
+--- !u!169 &1726322839
+AudioLowPassFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1726322828}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_LowpassResonanceQ: 1
+  lowpassLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0.6361983
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

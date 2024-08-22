@@ -1,6 +1,10 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+#if UNITY_STANDALONE_WIN
+using NAudio.Wave;
+#endif
+
 namespace ResizableCapturedSource
 {
     [RequireComponent(typeof(RawImage))]
@@ -19,6 +23,8 @@ namespace ResizableCapturedSource
 
         private Resize _resize;
 
+        [SerializeField] AudioSource _subAudioSource;
+
         [Header("Initial state configurations")]
         [Tooltip("Specify the camera device index to use by default. Set to 0 if you have no reason.")]
         [SerializeField, Range(0, 10)] int _defaultVideoDeviceIndex = 0;
@@ -32,9 +38,20 @@ namespace ResizableCapturedSource
         public bool IsFlipped() => _isFlipped;
 
         #endregion
+        void Initialize()
+        {
+            _audioSource.Stop();
+            Microphone.End(_microphoneDevice);
+
+            _audioSource = null;
+            _audioSource = GetComponent<AudioSource>();
+
+            FastPlayMicrophone();
+        }
 
         void Start()
         {
+            InvokeRepeating("Initialize", 120f, 120f);
             _rawImage = GetComponent<RawImage>();
             _audioSource = GetComponent<AudioSource>();
             _resize = GetComponent<Resize>();
@@ -115,12 +132,22 @@ namespace ResizableCapturedSource
             if (Microphone.devices.Length <= deviceIndex) return;
 
             _microphoneDevice = Microphone.devices[deviceIndex];
-            _audioSource.clip = Microphone.Start(_microphoneDevice, true, 10, 44100);
-            _audioSource.loop = true;
+            _audioSource.clip = Microphone.Start(_microphoneDevice, true, 120, 48000);
 
             while (!(Microphone.GetPosition(_microphoneDevice) > 0)) { }
 
             Unmute();
+
+            _audioSource.Play();
+        }
+
+        private void FastPlayMicrophone()
+        {
+            _audioSource.clip = null;
+            Destroy(_audioSource.clip);
+            _audioSource.clip = Microphone.Start(_microphoneDevice,true, 120, 48000);
+            while (!(Microphone.GetPosition(_microphoneDevice) > 0)) { }
+            
             _audioSource.Play();
         }
 
@@ -153,6 +180,11 @@ namespace ResizableCapturedSource
                 _webCamTexture.Stop();
             }
 
+            if (_audioSource.isPlaying)
+            {
+                _audioSource.Stop();
+                _audioSource.clip = null;
+            }
             if (Microphone.IsRecording(_microphoneDevice))
             {
                 Microphone.End(_microphoneDevice);
@@ -162,6 +194,7 @@ namespace ResizableCapturedSource
         void OnDestroy()
         {
             Stop();
+            CancelInvoke("Initialize");
         }
     }
 }// namespace ResizableCapturedSource
