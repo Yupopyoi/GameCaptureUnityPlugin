@@ -71,5 +71,5 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
-# Standard Assets
-/[Aa]ssets/TextMesh Pro/
+# Other Installed Packages
+/[Aa]ssets/SU3DJPFont/
