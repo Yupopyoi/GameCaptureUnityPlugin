@@ -20,11 +20,13 @@ namespace ResizableCapturedSource
         private RawImage _rawImage;
         private bool _isFlipped = false;
         private Resize _resize;
+        private int _videoDeviceIndex;
         
         private WaveInEvent _waveIn;
         private BufferedWaveProvider _bufferedWaveProvider;
         private WaveOutEvent _waveOut;
         private bool _isMute = false;
+        private int _audioDeviceIndex;
 
         [Header("Initial state configurations")]
         [Tooltip("Specify the camera device index to use by default. Set to 0 if you have no reason.")]
@@ -53,13 +55,6 @@ namespace ResizableCapturedSource
         [SerializeField] SampleRate _samplingRate = SampleRate.Rate_48000Hz;
         [SerializeField] Channel _channel = Channel.Mono;
 
-        #region Properties
-
-        public bool IsFlipped() => _isFlipped;
-        public bool IsMute() => _isMute;
-
-        #endregion
-
         void Start()
         {
             _rawImage = GetComponent<RawImage>();
@@ -75,9 +70,19 @@ namespace ResizableCapturedSource
             LoadDevices();
             PlayUsingSelectedDevice(_defaultVideoDeviceIndex);
             PlayMicrophone(_defaultAudioDeviceIndex);
+
+            _videoDeviceIndex = _defaultVideoDeviceIndex;
+            _audioDeviceIndex = _defaultAudioDeviceIndex;
         }
 
         #region Properties
+
+        public bool IsFlipped() => _isFlipped;
+        public bool IsMute() => _isMute;
+        public int VideoDeviceIndex() => _videoDeviceIndex;
+        public int AudioDeviceIndex() => _audioDeviceIndex;
+        public SampleRate SamplingRate() => _samplingRate;
+        public Channel AudioChannel() => _channel;
 
         public string[] VideoDeviceNames
         {
@@ -96,6 +101,7 @@ namespace ResizableCapturedSource
         {
             get
             {
+                LoadDevices();
                 string[] devicesNames = new string[Microphone.devices.Length];
                 for (int i = 0; i < Microphone.devices.Length; i++)
                 {
@@ -123,6 +129,18 @@ namespace ResizableCapturedSource
             _videoDevices = WebCamTexture.devices;
         }
 
+        public void SetSamplingRate(int value)
+        {
+            if(value == 44100)
+            {
+                _samplingRate = SampleRate.Rate_44100Hz;
+            }
+            else if (value == 48000)
+            {
+                _samplingRate = SampleRate.Rate_48000Hz;
+            }
+        }
+            
         public void PlayUsingSelectedDevice(int deviceIndex)
         {
             if (deviceIndex < 0) return;
@@ -132,10 +150,10 @@ namespace ResizableCapturedSource
             _rawImage.texture = _webCamTexture;
 
             _webCamTexture.Play();
+            _videoDeviceIndex = deviceIndex;
 
             _resize.SetAspectRatio(CameraResolution());
         }
-
 
         public void PlayMicrophone(int deviceIndex)
         {
@@ -154,10 +172,11 @@ namespace ResizableCapturedSource
 
             _waveOut = new WaveOutEvent();
             _waveOut.Init(_bufferedWaveProvider);
+            _audioDeviceIndex = deviceIndex;
 
-            if(!_isMute)
+            if (!_isMute)
             {
-                _waveIn?.StartRecording();
+                _waveIn.StartRecording();
                 _waveOut.Play();
             }
         }
@@ -183,13 +202,10 @@ namespace ResizableCapturedSource
         {
             _isMute = true;
 
-            if (_waveIn == null || _waveOut == null) return;
+            AudioStop();
 
-            _waveIn.StopRecording();
-            _waveOut.Stop();
- 
             _bufferedWaveProvider = new BufferedWaveProvider(_waveIn.WaveFormat);
-            _waveOut.Init(_bufferedWaveProvider);
+            _waveOut?.Init(_bufferedWaveProvider);
         }
 
         public void Unmute()
@@ -208,20 +224,24 @@ namespace ResizableCapturedSource
             else Mute();
         }
 
-        public void Stop()
+        public void VideoStop()
         {
             if (_webCamTexture != null)
             {
                 _webCamTexture.Stop();
             }
+        }
 
-             _waveIn?.StopRecording();
-             _waveOut?.Stop();
+        public void AudioStop()
+        {
+            _waveIn?.StopRecording();
+            _waveOut?.Stop();
         }
 
         void OnDestroy()
         {
-            Stop();
+            VideoStop();
+            AudioStop();
         }
     }
 }// namespace ResizableCapturedSource
