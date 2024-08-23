@@ -1,6 +1,4 @@
 using System;
-using System.Runtime.InteropServices.WindowsRuntime;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -150,7 +148,7 @@ namespace ResizableCapturedSource
                 }
 
                 // Obtain the coordinates of the corner to be fixed.
-                Vector3 fixedCorners = new Vector3(rawImage_x, rawImage_y, 0);
+                Vector3 fixedCorners = new(rawImage_x, rawImage_y, 0);
 
                 if(isLeftSideFixed){
                     fixedCorners.x -= rawImageWidth * 0.5f;
@@ -172,7 +170,7 @@ namespace ResizableCapturedSource
                 // Determine the new width of image.
                 var newWidth = rawImageWidth + differenceMouthPosition * 2 * _mouseSensitivity;
 
-                if(newWidth > Screen.width)
+                if(newWidth > Screen.width  && !_canStickOutScreen)
                 {
                     newWidth = Screen.width;
                 }
@@ -181,7 +179,7 @@ namespace ResizableCapturedSource
                     newWidth = _minWidth;
                 }
 
-                Vector2 sizeDelta = new Vector2(
+                Vector2 sizeDelta = new(
                     newWidth,
                     rawImageHeight
                 );
@@ -242,7 +240,7 @@ namespace ResizableCapturedSource
                 }
 
                 // Move to the coordinates obtained by calculation.
-                Vector3 newCenterPos = new Vector3(resized_x, resized_y, 0);
+                Vector3 newCenterPos = new(resized_x, resized_y, 0);
                 _resizeHandle.localPosition = newCenterPos;
 
                 // Update mouth point.

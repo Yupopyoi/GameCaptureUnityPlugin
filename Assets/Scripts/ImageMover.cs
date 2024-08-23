@@ -1,6 +1,3 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -113,7 +110,7 @@ namespace ResizableCapturedSource
                     }
                 }
 
-                Vector3 newCenterPos = new Vector3(newPosition_x, newPosition_y, 0);
+                Vector3 newCenterPos = new(newPosition_x, newPosition_y, 0);
                 _moveHandle.localPosition = newCenterPos;
 
                 if (_videoDisplayer.IsFlipped())

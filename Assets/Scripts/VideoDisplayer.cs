@@ -4,11 +4,13 @@ using UnityEngine.UI;
 #if UNITY_STANDALONE_WIN
 using NAudio.Wave;
 #endif
+#if UNITY_STANDALONE_LINUX
+//using OpenTK.Audio.OpenAL;
+#endif
 
 namespace ResizableCapturedSource
 {
     [RequireComponent(typeof(RawImage))]
-    [RequireComponent(typeof(AudioSource))]
     [RequireComponent(typeof(Resize))]
     public class VideoDisplayer : MonoBehaviour
     {
@@ -17,13 +19,12 @@ namespace ResizableCapturedSource
 
         private RawImage _rawImage;
         private bool _isFlipped = false;
-
-        private AudioSource _audioSource;
-        string _microphoneDevice;
-
         private Resize _resize;
-
-        [SerializeField] AudioSource _subAudioSource;
+        
+        private WaveInEvent _waveIn;
+        private BufferedWaveProvider _bufferedWaveProvider;
+        private WaveOutEvent _waveOut;
+        private bool _isMute = false;
 
         [Header("Initial state configurations")]
         [Tooltip("Specify the camera device index to use by default. Set to 0 if you have no reason.")]
@@ -32,29 +33,39 @@ namespace ResizableCapturedSource
         [SerializeField, Range(0, 10)] int _defaultAudioDeviceIndex = 0;
         [Tooltip("Display the image with the left and right sides flipped from the start.")]
         [SerializeField] bool _isFlippedByDefault = false;
+        [Tooltip("Select if you want to start in mute.")]
+        [SerializeField] bool _startInMute = true;
+
+        public enum SampleRate
+        {
+            Rate_44100Hz = 44100,
+            Rate_48000Hz = 48000
+        }
+        public enum Channel
+        {
+            Mono = 1,
+            Stereo = 2,
+            Quadraphonic = 4,
+            Surround_5_1 = 5,
+            Surround_7_1 = 7,
+        }
+        [Header("Audio configurations")]
+        [SerializeField] SampleRate _samplingRate = SampleRate.Rate_48000Hz;
+        [SerializeField] Channel _channel = Channel.Mono;
 
         #region Properties
 
         public bool IsFlipped() => _isFlipped;
+        public bool IsMute() => _isMute;
 
         #endregion
-        void Initialize()
-        {
-            _audioSource.Stop();
-            Microphone.End(_microphoneDevice);
-
-            _audioSource = null;
-            _audioSource = GetComponent<AudioSource>();
-
-            FastPlayMicrophone();
-        }
 
         void Start()
         {
-            InvokeRepeating("Initialize", 120f, 120f);
             _rawImage = GetComponent<RawImage>();
-            _audioSource = GetComponent<AudioSource>();
             _resize = GetComponent<Resize>();
+
+            _isMute = _startInMute;
 
             _isFlipped = _isFlippedByDefault;
             Vector3 scale = _rawImage.rectTransform.localScale;
@@ -130,35 +141,30 @@ namespace ResizableCapturedSource
         {
             if (deviceIndex < 0) return;
             if (Microphone.devices.Length <= deviceIndex) return;
-
-            _microphoneDevice = Microphone.devices[deviceIndex];
-            _audioSource.clip = Microphone.Start(_microphoneDevice, true, 120, 48000);
-
-            while (!(Microphone.GetPosition(_microphoneDevice) > 0)) { }
-
-            Unmute();
-
-            _audioSource.Play();
-        }
-
-        private void FastPlayMicrophone()
-        {
-            _audioSource.clip = null;
-            Destroy(_audioSource.clip);
-            _audioSource.clip = Microphone.Start(_microphoneDevice,true, 120, 48000);
-            while (!(Microphone.GetPosition(_microphoneDevice) > 0)) { }
             
-            _audioSource.Play();
+            _waveIn = new WaveInEvent
+            {
+                DeviceNumber = deviceIndex,
+                WaveFormat = new WaveFormat((int)_samplingRate, (int)_channel)
+            };
+
+            _bufferedWaveProvider = new BufferedWaveProvider(_waveIn.WaveFormat);
+
+            _waveIn.DataAvailable += OnDataAvailable;
+
+            _waveOut = new WaveOutEvent();
+            _waveOut.Init(_bufferedWaveProvider);
+
+            if(!_isMute)
+            {
+                _waveIn?.StartRecording();
+                _waveOut.Play();
+            }
         }
 
-        public void Mute()
+        private void OnDataAvailable(object sender, WaveInEventArgs e)
         {
-            _audioSource.mute = true;
-        }
-
-        public void Unmute()
-        {
-            _audioSource.mute = false;
+            _bufferedWaveProvider.AddSamples(e.Buffer, 0, e.BytesRecorded);
         }
 
         public void Reverse()
@@ -173,6 +179,35 @@ namespace ResizableCapturedSource
             }
         }
 
+        public void Mute()
+        {
+            _isMute = true;
+
+            if (_waveIn == null || _waveOut == null) return;
+
+            _waveIn.StopRecording();
+            _waveOut.Stop();
+ 
+            _bufferedWaveProvider = new BufferedWaveProvider(_waveIn.WaveFormat);
+            _waveOut.Init(_bufferedWaveProvider);
+        }
+
+        public void Unmute()
+        {
+            _isMute = false;
+
+            if (_waveIn == null || _waveOut == null) return;
+
+            _waveIn?.StartRecording();
+            _waveOut?.Play();
+        }
+
+        public void ChangeMuteState()
+        {
+            if (_isMute) Unmute();
+            else Mute();
+        }
+
         public void Stop()
         {
             if (_webCamTexture != null)
@@ -180,21 +215,13 @@ namespace ResizableCapturedSource
                 _webCamTexture.Stop();
             }
 
-            if (_audioSource.isPlaying)
-            {
-                _audioSource.Stop();
-                _audioSource.clip = null;
-            }
-            if (Microphone.IsRecording(_microphoneDevice))
-            {
-                Microphone.End(_microphoneDevice);
-            }
+             _waveIn?.StopRecording();
+             _waveOut?.Stop();
         }
 
         void OnDestroy()
         {
             Stop();
-            CancelInvoke("Initialize");
         }
     }
 }// namespace ResizableCapturedSource
