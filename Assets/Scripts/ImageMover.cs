@@ -35,6 +35,7 @@ namespace ResizableCapturedSource
         void Update()
         {
             if (!_resize.IsOperable) return;
+            if (!_resize.IsTemporaryOperable) return;
 
             // Start Moving
             if (Input.GetMouseButtonDown(0))

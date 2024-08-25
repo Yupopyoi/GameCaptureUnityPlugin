@@ -3,6 +3,7 @@ using UnityEngine.UI;
 
 #if UNITY_STANDALONE_WIN
 using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 #endif
 #if UNITY_STANDALONE_LINUX
 //using OpenTK.Audio.OpenAL;
@@ -25,6 +26,8 @@ namespace ResizableCapturedSource
         private WaveInEvent _waveIn;
         private BufferedWaveProvider _bufferedWaveProvider;
         private WaveOutEvent _waveOut;
+        private VolumeSampleProvider _volumeProvider;
+
         private bool _isMute = false;
         private int _audioDeviceIndex;
 
@@ -41,7 +44,8 @@ namespace ResizableCapturedSource
         public enum SampleRate
         {
             Rate_44100Hz = 44100,
-            Rate_48000Hz = 48000
+            Rate_48000Hz = 48000,
+            Rate_96000Hz = 96000
         }
         public enum Channel
         {
@@ -54,6 +58,7 @@ namespace ResizableCapturedSource
         [Header("Audio configurations")]
         [SerializeField] SampleRate _samplingRate = SampleRate.Rate_48000Hz;
         [SerializeField] Channel _channel = Channel.Mono;
+        [SerializeField, Range(0, 100)] int _volume = 50;
 
         void Start()
         {
@@ -79,10 +84,56 @@ namespace ResizableCapturedSource
 
         public bool IsFlipped() => _isFlipped;
         public bool IsMute() => _isMute;
+        public bool IsLocked
+        {
+            get
+            {
+                return !_resize.IsOperable;
+            }
+            set
+            {
+                _resize.IsOperable = !value;
+            }
+        }
+        public bool IsTemporaryLocked
+        {
+            get
+            {
+                return !_resize.IsTemporaryOperable;
+            }
+            set
+            {
+                _resize.IsTemporaryOperable = !value;
+            }
+        }
+        public bool CanStickOut
+        {
+            get
+            {
+                return _resize.CanStickOutScreen;
+            }
+            set
+            {
+                _resize.CanStickOutScreen = value;
+            }
+        }
         public int VideoDeviceIndex() => _videoDeviceIndex;
         public int AudioDeviceIndex() => _audioDeviceIndex;
         public SampleRate SamplingRate() => _samplingRate;
         public Channel AudioChannel() => _channel;
+        public int Volume 
+        {
+            get
+            {
+                return _volume;
+            }
+            set
+            {
+                if (value < 0) _volume = 0;
+                else if (value > 100) _volume = 100;
+                else _volume = value;
+            }
+        } 
 
         public string[] VideoDeviceNames
         {
@@ -139,8 +190,21 @@ namespace ResizableCapturedSource
             {
                 _samplingRate = SampleRate.Rate_48000Hz;
             }
+            else if (value == 96000)
+            {
+                _samplingRate = SampleRate.Rate_96000Hz;
+            }
         }
-            
+
+        public void SetChannel(int index)
+        {
+            if (index == 0) _channel = Channel.Mono;
+            else if (index == 1) _channel = Channel.Stereo;
+            else if (index == 2) _channel = Channel.Quadraphonic;
+            else if (index == 3) _channel = Channel.Surround_5_1;
+            else if (index == 4) _channel = Channel.Surround_7_1;
+        }
+
         public void PlayUsingSelectedDevice(int deviceIndex)
         {
             if (deviceIndex < 0) return;
@@ -168,10 +232,15 @@ namespace ResizableCapturedSource
 
             _bufferedWaveProvider = new BufferedWaveProvider(_waveIn.WaveFormat);
 
+            _volumeProvider = new VolumeSampleProvider(_bufferedWaveProvider.ToSampleProvider())
+            {
+                Volume = _volume * 0.01f
+            };
+
             _waveIn.DataAvailable += OnDataAvailable;
 
             _waveOut = new WaveOutEvent();
-            _waveOut.Init(_bufferedWaveProvider);
+            _waveOut.Init(_volumeProvider);
             _audioDeviceIndex = deviceIndex;
 
             if (!_isMute)
@@ -205,7 +274,13 @@ namespace ResizableCapturedSource
             AudioStop();
 
             _bufferedWaveProvider = new BufferedWaveProvider(_waveIn.WaveFormat);
-            _waveOut?.Init(_bufferedWaveProvider);
+
+            _volumeProvider = new VolumeSampleProvider(_bufferedWaveProvider.ToSampleProvider())
+            {
+                Volume = _volume * 0.01f
+            };
+
+            _waveOut?.Init(_volumeProvider);
         }
 
         public void Unmute()

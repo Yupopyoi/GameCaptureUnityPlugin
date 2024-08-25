@@ -25,6 +25,7 @@ namespace ResizableCapturedSource
             _panelWidth = _menuRectTransform.rect.width;   
             _panelHeight = _menuRectTransform.rect.height;
 
+            _settingPanel.TemporaryLock(false);
             _menuPanel.SetActive(false);
         }
 
@@ -46,6 +47,8 @@ namespace ResizableCapturedSource
 
                 _menuRectTransform.anchoredPosition = localPosition;
                 _menuPanel.SetActive(true);
+
+                _settingPanel.TemporaryLock(true);
                 _settingPanel.Load();
             }
             else if(eventData.button == PointerEventData.InputButton.Left)
@@ -64,10 +67,12 @@ namespace ResizableCapturedSource
 
                 if (!hideFlag) return;
 
+                _settingPanel.TemporaryLock(false);
                 _menuPanel.SetActive(false);
             }
             else
             {
+                _settingPanel.TemporaryLock(false);
                 _menuPanel.SetActive(false);
             }
         }

@@ -41,6 +41,8 @@ namespace ResizableCapturedSource
         [Tooltip("The minimum width that can be set.")]
         [SerializeField, Range(100.0f, 1000.0f)] float _minWidth = 200.0f;
 
+        bool _isTemporaryOperable = true;
+
         #region Properties
 
         public float ResizeArea() => _resizeMargin;
@@ -48,6 +50,11 @@ namespace ResizableCapturedSource
         {
             get { return _isOperable; }
             set { _isOperable = value; }
+        }
+        public bool IsTemporaryOperable
+        {
+            get { return _isTemporaryOperable; }
+            set { _isTemporaryOperable = value; }
         }
         public bool CanStickOutScreen
         {
@@ -70,6 +77,7 @@ namespace ResizableCapturedSource
         void Update()
         {
             if (!_isOperable) return;
+            if (!_isTemporaryOperable) return;
 
             // Start Resizing
             if (Input.GetMouseButtonDown(0))
